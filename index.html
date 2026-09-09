@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Simulasi Segitiga Exposure</title>
+    <title>Simulasi Segitiga Exposure Lanjutan</title>
     <style>
         :root {
-            --bg-color: #1e1e24;
+            --bg-color: #1a1a20;
             --panel-color: #2b2b36;
             --text-color: #f5f5f5;
-            --accent-color: #4facfe;
+            --accent-color: #f39c12;
             --border-radius: 12px;
         }
 
@@ -33,9 +33,9 @@
         .container {
             background-color: var(--panel-color);
             width: 100%;
-            max-width: 800px;
+            max-width: 850px;
             border-radius: var(--border-radius);
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            box-shadow: 0 10px 40px rgba(0,0,0,0.6);
             overflow: hidden;
             display: flex;
             flex-direction: column;
@@ -44,27 +44,35 @@
         .header {
             padding: 20px;
             text-align: center;
-            background: rgba(0,0,0,0.2);
-            border-bottom: 1px solid rgba(255,255,255,0.1);
+            background: rgba(0,0,0,0.3);
+            border-bottom: 1px solid rgba(255,255,255,0.05);
         }
 
         /* --- VIEWFINDER (Pemandangan) --- */
         .viewfinder-container {
             position: relative;
             width: 100%;
-            height: 350px;
+            height: 380px;
             background-color: #000;
             overflow: hidden;
         }
 
+        /* Scene utama menangani Exposure (Kecerahan) */
         .scene {
             width: 100%;
             height: 100%;
             background: linear-gradient(to bottom, #4facfe 0%, #00f2fe 100%);
             position: relative;
             transition: filter 0.2s ease-out;
-            /* Filter ini akan diubah oleh JavaScript */
             filter: brightness(1); 
+        }
+
+        /* Background Container (Untuk efek Depth of Field / Aperture) */
+        .dof-background {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            transition: filter 0.3s ease;
         }
 
         .sun {
@@ -80,16 +88,50 @@
 
         .mountain-1, .mountain-2 {
             position: absolute;
-            bottom: 60px;
+            bottom: 70px;
             width: 0;
             height: 0;
             border-left: 150px solid transparent;
             border-right: 150px solid transparent;
-            border-bottom: 200px solid #2c3e50;
+            border-bottom: 220px solid #2c3e50;
         }
 
         .mountain-1 { left: -50px; }
-        .mountain-2 { right: 50px; border-bottom-color: #34495e; border-bottom-width: 250px; }
+        .mountain-2 { right: 80px; border-bottom-color: #34495e; border-bottom-width: 270px; }
+
+        /* Burung Terbang (Untuk efek Motion Blur / Shutter Speed) */
+        .moving-bird {
+            position: absolute;
+            top: 80px;
+            width: 30px;
+            height: 15px;
+            background-color: #111;
+            border-radius: 50% 50% 0 0;
+            animation: fly 4s linear infinite;
+            transition: filter 0.1s ease;
+        }
+        
+        .moving-bird::after {
+            content: '';
+            position: absolute;
+            bottom: 0; left: -10px;
+            width: 50px; height: 5px;
+            background: #111;
+            border-radius: 10px;
+        }
+
+        @keyframes fly {
+            0% { left: -10%; top: 120px; }
+            100% { left: 110%; top: 60px; }
+        }
+
+        /* Foreground Container (Fokus utama, tidak blur) */
+        .foreground {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            bottom: 0;
+        }
 
         .ground {
             position: absolute;
@@ -97,6 +139,43 @@
             width: 100%;
             height: 80px;
             background: #27ae60;
+            border-top: 5px solid #219653;
+        }
+
+        /* Pohon di depan */
+        .tree-trunk {
+            position: absolute;
+            bottom: 60px;
+            left: 15%;
+            width: 30px;
+            height: 140px;
+            background: #5d4037;
+            border-radius: 5px;
+        }
+
+        .tree-leaves {
+            position: absolute;
+            bottom: 140px;
+            left: calc(15% - 45px);
+            width: 120px;
+            height: 120px;
+            background: #2e7d32;
+            border-radius: 50%;
+            box-shadow: -10px 10px 0 rgba(0,0,0,0.2) inset;
+        }
+
+        /* Noise Overlay (Untuk efek ISO) */
+        .noise-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: url("data:image/svg+xml;utf8,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+            mix-blend-mode: overlay;
+            opacity: 0; /* Diubah via JS */
+            pointer-events: none; /* Agar tidak menghalangi klik */
+            transition: opacity 0.3s ease;
         }
 
         /* --- EXPOSURE METER --- */
@@ -106,52 +185,44 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
+            border-bottom: 1px solid rgba(255,255,255,0.05);
         }
 
         .meter-scale {
             position: relative;
             width: 80%;
-            height: 10px;
+            height: 8px;
             background: linear-gradient(90deg, #e74c3c 0%, #f1c40f 25%, #2ecc71 50%, #f1c40f 75%, #e74c3c 100%);
-            border-radius: 5px;
+            border-radius: 4px;
             margin: 15px 0;
-        }
-
-        .meter-ticks {
-            position: absolute;
-            width: 100%;
-            display: flex;
-            justify-content: space-between;
-            top: -20px;
-            font-size: 12px;
-            color: #ccc;
         }
 
         .meter-needle {
             position: absolute;
-            top: -5px;
-            left: 50%; /* 50% adalah exposure 0 / tepat */
+            top: -6px;
+            left: 50%;
             width: 4px;
             height: 20px;
-            background: white;
-            box-shadow: 0 0 5px rgba(0,0,0,0.5);
+            background: #fff;
+            box-shadow: 0 0 5px rgba(0,0,0,0.8);
             transition: left 0.3s ease-out;
             transform: translateX(-50%);
+            border-radius: 2px;
         }
 
         .meter-status {
-            font-size: 14px;
+            font-size: 15px;
             font-weight: bold;
             color: #2ecc71;
+            margin-bottom: 5px;
         }
 
         /* --- CONTROLS --- */
         .controls {
-            padding: 20px;
+            padding: 25px;
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 25px;
         }
 
         .control-group {
@@ -162,7 +233,7 @@
         .control-header {
             display: flex;
             justify-content: space-between;
-            margin-bottom: 10px;
+            margin-bottom: 8px;
             font-size: 14px;
             color: #ccc;
         }
@@ -170,6 +241,16 @@
         .control-value {
             font-weight: bold;
             color: var(--accent-color);
+            background: rgba(255,255,255,0.1);
+            padding: 2px 8px;
+            border-radius: 4px;
+        }
+
+        .effect-label {
+            font-size: 11px;
+            color: #888;
+            margin-top: 5px;
+            text-align: right;
         }
 
         input[type="range"] {
@@ -178,27 +259,25 @@
             background: transparent;
         }
 
-        input[type="range"]:focus {
-            outline: none;
-        }
-
+        input[type="range"]:focus { outline: none; }
+        
         input[type="range"]::-webkit-slider-runnable-track {
             width: 100%;
             height: 6px;
             cursor: pointer;
-            background: #555;
+            background: #444;
             border-radius: 3px;
         }
 
         input[type="range"]::-webkit-slider-thumb {
-            height: 18px;
-            width: 18px;
+            height: 20px;
+            width: 20px;
             border-radius: 50%;
             background: var(--accent-color);
             cursor: pointer;
             -webkit-appearance: none;
-            margin-top: -6px;
-            box-shadow: 0 0 5px rgba(0,0,0,0.5);
+            margin-top: -7px;
+            box-shadow: 0 0 8px rgba(0,0,0,0.5);
         }
     </style>
 </head>
@@ -206,35 +285,42 @@
 
     <div class="container">
         <div class="header">
-            <h2>Simulasi Segitiga Exposure</h2>
-            <p style="font-size: 14px; color: #aaa; margin-top: 5px;">Atur slider untuk melihat efeknya pada cahaya gambar.</p>
+            <h2>Simulasi Segitiga Exposure Pro</h2>
+            <p style="font-size: 14px; color: #aaa; margin-top: 5px;">Perhatikan efek cahaya, Bokeh (Background Blur), Motion Blur, dan Noise.</p>
         </div>
 
         <!-- Viewfinder Kamera -->
         <div class="viewfinder-container">
             <div class="scene" id="scene">
-                <div class="sun"></div>
-                <div class="mountain-2"></div>
-                <div class="mountain-1"></div>
-                <div class="ground"></div>
+                
+                <!-- Background (Terpengaruh Aperture / Depth of Field) -->
+                <div class="dof-background" id="dofBackground">
+                    <div class="sun"></div>
+                    <div class="mountain-2"></div>
+                    <div class="mountain-1"></div>
+                </div>
+
+                <!-- Objek Bergerak (Terpengaruh Shutter Speed / Motion Blur) -->
+                <div class="moving-bird" id="movingBird"></div>
+
+                <!-- Foreground (Selalu Fokus) -->
+                <div class="foreground">
+                    <div class="tree-trunk"></div>
+                    <div class="tree-leaves"></div>
+                    <div class="ground"></div>
+                </div>
+
+                <!-- Noise (Terpengaruh ISO) -->
+                <div class="noise-overlay" id="noiseOverlay"></div>
             </div>
         </div>
 
         <!-- Light Meter / Exposure Meter -->
         <div class="exposure-meter">
+            <div class="meter-status" id="meterStatus">Correct Exposure</div>
             <div class="meter-scale">
-                <div class="meter-ticks">
-                    <span>-3</span>
-                    <span>-2</span>
-                    <span>-1</span>
-                    <span>0</span>
-                    <span>+1</span>
-                    <span>+2</span>
-                    <span>+3</span>
-                </div>
                 <div class="meter-needle" id="meterNeedle"></div>
             </div>
-            <div class="meter-status" id="meterStatus">Correct Exposure</div>
         </div>
 
         <!-- Kontrol Segitiga Exposure -->
@@ -246,15 +332,17 @@
                     <span class="control-value" id="apertureVal">f/5.6</span>
                 </div>
                 <input type="range" id="apertureSlider" min="0" max="8" step="1" value="4">
+                <div class="effect-label">Mengontrol Depth of Field (Bokeh)</div>
             </div>
 
             <!-- Shutter Speed -->
             <div class="control-group">
                 <div class="control-header">
-                    <span>Shutter Speed (Rana)</span>
+                    <span>Shutter Speed</span>
                     <span class="control-value" id="shutterVal">1/125s</span>
                 </div>
                 <input type="range" id="shutterSlider" min="0" max="12" step="1" value="7">
+                <div class="effect-label">Mengontrol Motion Blur (Ketajaman Gerak)</div>
             </div>
 
             <!-- ISO -->
@@ -264,17 +352,16 @@
                     <span class="control-value" id="isoVal">400</span>
                 </div>
                 <input type="range" id="isoSlider" min="0" max="6" step="1" value="2">
+                <div class="effect-label">Mengontrol Noise (Bintik Gambar)</div>
             </div>
         </div>
     </div>
 
     <script>
-        // Array nilai dari terang ke gelap (Aperture & Shutter) atau gelap ke terang (ISO)
-        const apertures = ["f/1.4", "f/2", "f/2.8", "f/4", "f/5.6", "f/8", "f/11", "f/16", "f/22"]; // Index tinggi = makin gelap
-        const shutters = ["1s", "1/2s", "1/4s", "1/8s", "1/15s", "1/30s", "1/60s", "1/125s", "1/250s", "1/500s", "1/1000s", "1/2000s", "1/4000s"]; // Index tinggi = makin gelap
-        const isos = ["100", "200", "400", "800", "1600", "3200", "6400"]; // Index tinggi = makin terang
+        const apertures = ["f/1.4", "f/2", "f/2.8", "f/4", "f/5.6", "f/8", "f/11", "f/16", "f/22"]; 
+        const shutters = ["1s", "1/2s", "1/4s", "1/8s", "1/15s", "1/30s", "1/60s", "1/125s", "1/250s", "1/500s", "1/1000s", "1/2000s", "1/4000s"]; 
+        const isos = ["100", "200", "400", "800", "1600", "3200", "6400"]; 
 
-        // Referensi elemen DOM
         const apertureSlider = document.getElementById('apertureSlider');
         const shutterSlider = document.getElementById('shutterSlider');
         const isoSlider = document.getElementById('isoSlider');
@@ -286,10 +373,12 @@
         const scene = document.getElementById('scene');
         const meterNeedle = document.getElementById('meterNeedle');
         const meterStatus = document.getElementById('meterStatus');
+        
+        // Elemen-elemen yang menerima efek samping
+        const dofBackground = document.getElementById('dofBackground');
+        const movingBird = document.getElementById('movingBird');
+        const noiseOverlay = document.getElementById('noiseOverlay');
 
-        // Nilai target eksposur (kombinasi nilai indeks agar exposure pas di titik 0)
-        // Contoh awal: Aperture index 4 (f/5.6), Shutter 7 (1/125), ISO 2 (400)
-        // Total Base Kegelapan = 4 + 7 - 2 = 9. 
         const TARGET_EXPOSURE_INDEX = 9;
 
         function updateExposure() {
@@ -297,56 +386,52 @@
             const shIdx = parseInt(shutterSlider.value);
             const isoIdx = parseInt(isoSlider.value);
 
-            // Update Text Label
             apertureVal.textContent = apertures[apIdx];
             shutterVal.textContent = shutters[shIdx];
             isoVal.textContent = isos[isoIdx];
 
-            // Kalkulasi Exposure
-            // Nilai total saat ini = (Index Aperture) + (Index Shutter) - (Index ISO)
+            // 1. MENGHITUNG CAHAYA (BRIGHTNESS)
             const currentExposureIndex = apIdx + shIdx - isoIdx;
-            
-            // Selisih eksposur (dalam satuan Stop Cahaya)
-            // Positif = Overexposed (terlalu banyak cahaya)
-            // Negatif = Underexposed (kurang cahaya)
             let exposureDiff = TARGET_EXPOSURE_INDEX - currentExposureIndex;
 
-            // --- Update Meter Visual ---
-            // Kita batasi jarum di antara -3.5 dan +3.5 stop agar tidak keluar kotak
             let displayDiff = Math.max(-3.5, Math.min(3.5, exposureDiff));
-            
-            // Konversi ke persentase kiri-kanan (0% paling kiri, 50% tengah, 100% kanan)
-            // Range total di UI adalah -3 hingga +3 (rentang 6)
             let leftPercentage = 50 + (displayDiff * (100 / 6)); 
             meterNeedle.style.left = `${leftPercentage}%`;
 
-            // Update Status Teks
             if (exposureDiff < -0.5) {
-                meterStatus.textContent = "Underexposed (Terlalu Gelap)";
+                meterStatus.textContent = "Underexposed (Kekurangan Cahaya)";
                 meterStatus.style.color = "#e74c3c";
             } else if (exposureDiff > 0.5) {
-                meterStatus.textContent = "Overexposed (Terlalu Terang)";
+                meterStatus.textContent = "Overexposed (Kelebihan Cahaya)";
                 meterStatus.style.color = "#e74c3c";
             } else {
                 meterStatus.textContent = "Correct Exposure (Cahaya Pas)";
                 meterStatus.style.color = "#2ecc71";
             }
 
-            // --- Update Gambar Viewfinder ---
-            // Menghitung filter kecerahan (brightness). 
-            // Setiap 1 stop perbedaan menggandakan / membagi dua cahaya.
-            // Rumus base: 2 pangkat (exposureDiff)
-            // Digunakan pengali 0.6 agar perubahannya lebih dramatis namun tetap terlihat di browser.
             let brightnessLevel = Math.pow(2, exposureDiff * 0.6);
             scene.style.filter = `brightness(${brightnessLevel})`;
+
+            // 2. EFEK SAMPING: DEPTH OF FIELD (Aperture)
+            // f/1.4 (idx 0) = Paling Blur | f/22 (idx 8) = Tajam semua
+            let dofBlur = Math.max(0, (8 - apIdx) * 1.5); // Maksimal blur sekitar 12px
+            dofBackground.style.filter = `blur(${dofBlur}px)`;
+
+            // 3. EFEK SAMPING: MOTION BLUR (Shutter Speed)
+            // 1s (idx 0) = Sangat berbayang | 1/250s ke atas (idx 8+) = Beku/Tajam
+            let motionBlur = Math.max(0, (8 - shIdx) * 2.5);
+            movingBird.style.filter = `blur(${motionBlur}px)`;
+
+            // 4. EFEK SAMPING: NOISE/GRAIN (ISO)
+            // ISO 100 (idx 0) = Bersih | ISO 6400 (idx 6) = Sangat banyak bintik (Opacity tinggi)
+            let noiseOp = isoIdx * 0.15; 
+            noiseOverlay.style.opacity = noiseOp;
         }
 
-        // Tambahkan Event Listener ke semua slider
         apertureSlider.addEventListener('input', updateExposure);
         shutterSlider.addEventListener('input', updateExposure);
         isoSlider.addEventListener('input', updateExposure);
 
-        // Jalankan sekali saat halaman dimuat
         updateExposure();
     </script>
 </body>
